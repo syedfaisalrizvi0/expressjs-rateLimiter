@@ -4,8 +4,12 @@ const leakyBucket = require("../app/rateLimiter/leakyBucket");
 var router = express.Router();
 
 /* GET home page. */
-router.get("/", leakyBucket(60, 1000, "ip", false), function (req, res, next) {
-  res.render("index", { title: "Express" });
-});
+router.get(
+  "/",
+  [leakyBucket(60, 1000, "ip", false), tokenBucket("ip", 60, 1)],
+  function (req, res, next) {
+    res.send("hello");
+  }
+);
 
 module.exports = router;
