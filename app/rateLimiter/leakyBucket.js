@@ -3,7 +3,6 @@ let tinterval = null;
  * this is the leaky bucket implementation in expressjs
  */
 class LeakyBucket {
-  static interval;
   constructor(capacity, interval, bindOn, req, res, next) {
     /**
      * bind interval
@@ -43,12 +42,22 @@ class LeakyBucket {
    * @param {} data
    */
   async pushItem() {
-    let push = await this.client.rPush(this.containerName, this.key);
-    if (push >= 60) {
+    console.log("??", await this.getCount());
+    if ((await this.getCount()) < 60) {
+      await this.client.rPush(this.containerName, this.key);
+    } else {
       return this.res.status(401).json({ limit: "limit full" });
     }
     this.setinterval();
     this.next();
+  }
+  /**
+   *
+   */
+  async getCount() {
+    return await (
+      await this.client.lRange(this.containerName, 0, -1)
+    ).length;
   }
   /**
    * @returns String
@@ -66,11 +75,10 @@ class LeakyBucket {
    */
   setinterval() {
     if (!tinterval) {
-      console.log("added interval");
       tinterval = setInterval(async () => {
         await this.client.rPop(this.containerName);
         console.log("poping....");
-        if ((await this.client.lRange(this.containerName, 0, -1)).length <= 1) {
+        if ((await this.getCount()) < 1) {
           clearInterval(tinterval);
           tinterval = null;
         }
