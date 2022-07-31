@@ -1,4 +1,5 @@
 let tinterval = null;
+const process = require("process");
 /**
  * this is the leaky bucket implementation in expressjs
  */
@@ -42,7 +43,6 @@ class LeakyBucket {
    * @param {} data
    */
   async pushItem() {
-    console.log("??", await this.getCount());
     if ((await this.getCount()) < 60) {
       await this.client.rPush(this.containerName, this.key);
     } else {
@@ -77,7 +77,6 @@ class LeakyBucket {
     if (!tinterval) {
       tinterval = setInterval(async () => {
         await this.client.rPop(this.containerName);
-        console.log("poping....");
         if ((await this.getCount()) < 1) {
           clearInterval(tinterval);
           tinterval = null;
@@ -85,12 +84,21 @@ class LeakyBucket {
       }, this.interval);
     }
   }
+  /**
+   * check memory uses
+   */
+  memory() {
+    const used = process.memoryUsage().heapUsed / 1024 / 1024;
+    console.log(
+      `The script uses approximately ${Math.round(used * 100) / 100} MB`
+    );
+  }
 }
-module.exports = (capacity = 60, interval = 1000, bindOn = "ip") => {
-  return (req, res, next) => {
+module.exports =
+  (capacity = 60, interval = 1000, bindOn = "ip") =>
+  (req, res, next) => {
     /**
      * we will auto-import the class  of Leaky bucket
      */
     new LeakyBucket(capacity, interval, bindOn, req, res, next);
   };
-};
